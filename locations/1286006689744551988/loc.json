@@ -1,0 +1,61 @@
+{
+    "name":"Dwarven Township",
+    "danger": "90",
+    "monsters": {
+        "0": {
+            "name": "Zombie Dwarf",
+            "hp": "34",
+            "mp": "100",
+            "xp": "30",
+            "gold_min": "80", 
+            "gold_max": "550",
+            "attacks": {
+                "fireball": {
+                    "min_damage": "1", 
+                    "max_damage": "4", 
+                    "cost": "25"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "2", "chance": "3"}
+                ],
+                "armor": [
+                    {"id": "1", "chance": "5"},
+                    {"id": "2", "chance": "5"},
+                    {"id": "3", "chance": "5"}
+                ],
+                "consumable": [
+                    {"id": "1", "chance": "1"}
+                ],
+                "misc": [
+                    {"id": "0", "chance": "5"}
+                ]
+            }
+        },
+        "1": {
+            "name": "Ninja",
+            "hp": "20",
+            "mp": "0",
+            "xp": "48",
+            "gold_min": "110", 
+            "gold_max": "615",
+            "attacks": {
+                "shuriken": {
+                    "min_damage": "4", 
+                    "max_damage": "6", 
+                    "cost": "0"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "7", "chance": "3"}
+                ],
+                "consumable": [
+                    {"id": "3", "chance": "10"},
+                    {"id": "4", "chance": "8"}
+                ]
+            }
+        }
+    }
+}

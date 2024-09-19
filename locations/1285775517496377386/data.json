@@ -1,0 +1,11 @@
+{
+    "doors": {
+        "Cave entrance": {
+            "open": "0",
+            "key-item-type": "misc",
+            "key-item-id": "2",
+            "num-keys": "1"
+        }
+    },
+    "storage": []
+}

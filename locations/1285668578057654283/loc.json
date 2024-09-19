@@ -1,0 +1,61 @@
+{
+    "name": "Lakeside Forestarium",
+    "danger": "90",
+    "monsters": {
+        "0": {
+            "name": "Slime",
+            "hp": "20",
+            "mp": "0",
+            "xp": "5",
+            "gold_min": "20", 
+            "gold_max": "50",
+            "attacks": {
+                "slime darts": {
+                    "min_damage": "1", 
+                    "max_damage": "6", 
+                    "cost": "0"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "1", "chance": "30"}
+                ],
+                "armor": [
+                    {"id": "0", "chance": "1"}
+                ],
+                "consumable": [
+                    {"id": "3", "chance": "20"}
+                ],
+                "misc": [
+                    {"id": "0", "chance": "5"},
+                    {"id": "1", "chance": "5"}
+                ]
+            }
+        },
+        "1": {
+            "name": "Piranha",
+            "hp": "16",
+            "mp": "0",
+            "xp": "5",
+            "gold_min": "40", 
+            "gold_max": "60",
+            "attacks": {
+                "bite": {
+                    "min_damage": "4", 
+                    "max_damage": "5", 
+                    "cost": "0"
+                },
+                "splash": {
+                    "min_damage": "0", 
+                    "max_damage": "0", 
+                    "cost": "0"
+                }
+            },
+            "drops": {
+                "consumable": [
+                    {"id": "6", "chance": "100"}
+                ]
+            }
+        }
+    }
+}

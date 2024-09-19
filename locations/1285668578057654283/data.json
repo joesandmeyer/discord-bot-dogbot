@@ -1,0 +1,11 @@
+{
+    "doors": {
+        "Ancient Ruins": {
+            "open": "0",
+            "key-item-type": "weapon",
+            "key-item-id": "1",
+            "num-keys": "5"
+        }
+    },
+    "storage": []
+}

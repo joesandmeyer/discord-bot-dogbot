@@ -1,6 +1,12 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, MessageCollector } = require('discord.js');
 const token = require('./token.js');
 const channel_id = require('./channel_id.js');
+const items = {
+    "weapon": require('./items/weapons.js'),
+    "armor": require('./items/armor.js'),
+    "consumable": require('./items/consumables.js'),
+    "misc": require('./items/misc.js')
+};
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
@@ -15,12 +21,22 @@ const channelCommands = {
         '!help': helpBots,
     },
     [channel_id[2]]: { // secret glade
-        '!stats': showStats
+        '!status': showStatus,
+        '!explore': explore,
+        '!inv': showInventory
     },
-    [channel_id[3]]: { // roleplay channel
+    [channel_id[3]]: { // roleplay channel: start
         '!help': helpRP,
         '!explore': explore,
-        '!stats': showStats
+        '!status': showStatus,
+        '!inv': showInventory
+    },
+    [channel_id[4]]: { // roleplay channel: dwarven township
+        '!help': helpDwarvenTownship,
+        '!explore': explore,
+        '!status': showStatus,
+        '!inv': showInventory,
+        '!tavern': enterTavern
     }
 };
 
@@ -53,14 +69,15 @@ client.on('messageCreate', (message) => {
 
 async function giveRole(message, roleName) {
     if (!roleName) {
-        return message.reply('Please specify a role (weeb, fur, game dev)');
+        return message.reply('Please specify a role (weeb, fur, gamedev)');
     }
     await assignRole(message, roleName);
 }
 
 async function helpRoles(message) {
-    message.reply('!help -- roles help/n!role [role_name]');
+    message.reply('!help -- roles help\n!role [role_name] -- self-assign role');
 }
+
 
   //
  // Channel: bots
@@ -70,50 +87,254 @@ async function helpBots(message) {
     message.reply('!help -- bots help');
 }
 
-  //
- // Channel: sfw-roleplay
 
+  //
+ // Channel: roleplay main
+//
 
 async function helpRP(message) {
-    message.reply('!help -- roleplay help\n!explore -- random encounter\n!stats -- show stats');
+    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory');
 }
 
-// Simulate gaining XP and leveling up
-function explore(message) {
+
+  //
+ // Channel: dwarven township
+//
+
+async function helpDwarvenTownship(message) {
+    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory\n!tavern -- rent a room (5 gold)');
+}
+
+
+  //
+ // Explore
+//
+
+async function explore(message) {
     const userId = message.author.id;
+    const chanId = message.channel.id;
 
     // Get the current stats of the user
     let userStats = getUserStats(userId);
+    let loc = getLocation(chanId);
+    
+    await message.reply(`Exploring: ${loc.name}.`);
+    
+    //choose random encounter at location
+    if (Math.random() * 100 < parseInt(loc.danger)) { // hostile encounter
+        let outcome = "failure";
+        let esc = false;
+        
+        const keys = Object.keys(loc.monsters);
+        const n = keys[Math.floor(Math.random() * keys.length)];
+        const monster = loc.monsters[n];
+        
+        await message.reply(`A ${monster.name} stands in your way...\nPrepare for battle!`);
+        
+        let playerhp = userStats.hp;
+        let playermp = userStats.mp;
+        let monsterhp = monster.hp;
+        let monstermp = monster.mp;
+        let turn = "player";
+        
+        while (playerhp >= 1 && monsterhp >= 1) {
+            //battle
+            await message.reply(`It's the ${turn}'s turn!`);
+            
+            if (turn === "player") {
+                message.reply(`!a -- attack\n!b -- items\n!c -- run\n`);
+                
+                 // Collect player input
+                const filter = m => m.author.id === userId && ['!a', '!b', '!c'].includes(m.content.toLowerCase());
+                const collector = new MessageCollector(message.channel, { filter, time: 60000 }); // 60 seconds timeout
+                
+                await new Promise(resolve => {
+                    collector.on('collect', async (msg) => {
+                        collector.stop(); // Stop collecting after the first valid input
+                        const command = msg.content.toLowerCase();
+                        if (command === '!a') {
+                            const weapon = items.weapon[userStats.equipped.hands];
+                            const high = parseInt(weapon.max_damage);
+                            const low = parseInt(weapon.min_damage);
+                            const dmg = Math.floor(Math.random() * (high - low) + low);
+                            monsterhp -= dmg;
+                            
+                            await message.reply(`You chose to attack!\n\nYour ${weapon.name} deals ${dmg} damage.`);
+                            
+                        } else if (command === '!b') {
+                            await message.reply(`You chose to use items!`);
+                        } else if (command === '!c') {
+                            await message.reply(`You chose to run!\n\nYour stats:   HP ${playerhp}/100    MP ${playermp}/100`);
+                            
+                            userStats.hp = playerhp;
+                            userStats.mp = playermp;
+                            
+                            updateUserStats(userId, userStats);
+                            return;
+                        } else {
+                            await message.reply(`Invalid move...\n\nYour turn has been skipped!`);
+                        }
+                        turn = "monster"; // Switch turn after player's action
+                        resolve();
+                    });
+                    
+                    collector.on('end', async (collected, reason) => {
+                        if (reason === 'time') {
+                            await message.reply(`Time's up!\n\nYour turn has been skipped.`);
+                            turn = "monster"; // Automatically switch turn after timeout
+                            resolve();
+                        }
+                    });
+                });
+              
+                turn = "monster";
+            } else {
+                const moves = monster.attacks;
+                
+                const keys = Object.keys(moves); 
+                const randomKey = keys[Math.floor(Math.random() * keys.length)];
+                const move = moves[randomKey];
+                
+                const high = parseInt(move.max_damage);
+                const low = parseInt(move.min_damage);
+                const dmg = Math.floor(Math.random() * (high - low) + low);
+                playerhp -= dmg;
+                
+                await message.reply(`${monster.name} used ${randomKey}!\n\nThe attack damages you for ${dmg} hp.`);
+              
+                turn = "player";
+            }
+            
+            if (playerhp < 1) playerhp = 0;
+            if (monsterhp < 1) monsterhp = 0;
+            
+            const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+            await message.reply(`Your stats:   HP ${playerhp}/100    MP ${playermp}/100\n\n${name}'s stats:   HP ${monsterhp}/${monster.hp}    MP ${monstermp}/${monster.mp}`);
+        }
+        
+        if (playerhp <= monsterhp) {
+            await message.reply(`You have been defeated.`);
+            outcome = "failure";
+        } else {
+            const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+            await message.reply(`${name} has been defeated.`);
+            outcome = "victory";
+        }
 
-    // Random XP gain
-    const xpGained = Math.floor(Math.random() * 20) + 10;
-    userStats.xp += xpGained;
-
-    // Check if the user should level up
-    const xpPerLevel = 100;
-    if (userStats.xp >= xpPerLevel) {
-        userStats.level += 1;
-        userStats.xp = userStats.xp - xpPerLevel; // Reset XP for the next level
-        message.reply(`You leveled up! You are now level ${userStats.level}`);
-    } else {
-        message.reply(`You gained ${xpGained} XP. Current XP: ${userStats.xp}`);
+        if (outcome === "victory") {
+            userStats.hp = playerhp;
+            userStats.mp = 100;
+            const high = parseInt(monster.gold_max);
+            const low = parseInt(monster.gold_min);
+            const gold_gain = Math.floor(Math.random() * (high - low) + low);
+            const xp_gain = parseInt(monster.xp) + Math.floor(Math.random() * 3);
+            userStats.gold += gold_gain;
+            userStats.xp += xp_gain;
+            await message.reply(`You earned (${gold_gain}) Gold and (${xp_gain}) XP!`);
+            //handle monster drops
+            const drops = monster.drops;
+            if (drops.weapon) {
+                for (const [key, item] of Object.entries(drops.weapon)) {
+                    if (Math.random() * 100 < parseInt(item.chance)) {
+                        if (!userStats.inv.weapon[item.id]) userStats.inv.weapon[item.id] = 1;
+                        else userStats.inv.weapon[item.id] += 1;
+                        const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+                        const get = items.weapon[item.id].name;
+                        await message.reply(`${name} has dropped a weapon: ${get}.`);
+                    }
+                }
+            }
+            if (drops.armor) {
+                for (const [key, item] of Object.entries(drops.armor)) {
+                    if (Math.random() * 100 < parseInt(item.chance)) {
+                        if (!userStats.inv.armor[item.id]) userStats.inv.armor[item.id] = 1;
+                        else userStats.inv.armor[item.id] += 1;
+                        const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+                        const get = items.armor[item.id].name;
+                        await message.reply(`${name} has dropped equipment: ${get}.`);
+                    }
+                }
+            }
+            if (drops.consumable) {
+                for (const [key, item] of Object.entries(drops.consumable)) {
+                    if (Math.random() * 100 < parseInt(item.chance)) {
+                        if (!userStats.inv.consumable[item.id]) userStats.inv.consumable[item.id] = 1;
+                        else userStats.inv.consumable[item.id] += 1;
+                        const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+                        const get = items.consumable[item.id].name;
+                        await message.reply(`${name} has dropped a consumable item: ${get}.`);
+                    }
+                }
+            }
+            if (drops.misc) {
+                for (const [key, item] of Object.entries(drops.misc)) {
+                    if (Math.random() * 100 < parseInt(item.chance)) {
+                        if (!userStats.inv.misc[item.id]) userStats.inv.misc[item.id] = 1;
+                        else userStats.inv.misc[item.id] += 1;
+                        const name = monster.name.charAt(0).toUpperCase() + monster.name.slice(1);
+                        const get = items.misc[item.id].name;
+                        await message.reply(`${name} has dropped an item: ${get}.`);
+                    }
+                }
+            }
+            
+            checkLevelUp(userStats, message)
+        } else if (outcome === "failure") {
+            userStats.hp = 100;
+            userStats.mp = 100;
+            userStats.xp = 0;
+        }
+        
+    } else { // non-combat encounter
+        await message.reply(`Non-combat encounter!`);
     }
-
+    
     // Save updated stats back to the file
     updateUserStats(userId, userStats);
 }
 
-function showStats(message) {
+
+  //
+ // Taverns
+//
+
+function enterTavern(message) {
     const userId = message.author.id;
-    
-    // Get the user's stats from the file
+    //let userStats = getUserStats(userId);
+
+    await message.reply(`This feature is WIP.`);
+}
+
+function showStatus(message) {
+    const userId = message.author.id;
     let userStats = getUserStats(userId);
 
     // Display stats
-    message.reply(`You are level ${userStats.level} with ${userStats.xp} XP.`);
+    checkLevelUp(userStats, message);
+    message.reply(`HP:   ${userStats.hp}\nMP:   ${userStats.mp}\n\nGold:   ${userStats.gold}\n\nHands:   ${items.weapon[userStats.equipped.hands].name}\nHead:   ${items.armor[userStats.equipped.head].name}\nTorso:   ${items.armor[userStats.equipped.torso].name}\nLegs:   ${items.armor[userStats.equipped.legs].name}`);
 }
 
-// Common functions
+function showInventory(message) {
+    const userId = message.author.id;
+    let msg = "Your inventory:";
+    const userStats = getUserStats(userId);
+    const inv = userStats.inv;
+
+    for (const [key, list] of Object.entries(inv)) {
+        msg += `\n\n -  ${key}`;
+        for (const [item, n] of Object.entries(list)) {
+            const item_name = items[key][item].name;
+            msg += `\n   -  ${item_name} (${n})`;
+        }
+    }
+    message.reply(msg);
+}
+
+
+  //
+ // common functions
+//
+
 async function assignRole(message, roleName) {
     const role = message.guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase());
     if (!role) {
@@ -128,20 +349,16 @@ async function assignRole(message, roleName) {
     }
 }
 
-function levelUpUser(message, userId) {
-    const user = userData[userId];
-    user.level += 1;
-    user.xp = user.xp - xpPerLevel;
-    message.reply(`Congratulations! You've leveled up to level ${user.level}!`);
-}
 
+  //
+ // savedata functions
+//
 
-//savedata functions
 const fs = require('fs');
 const path = require('path');
 
-// Directory to store user stats
 const userStatsDir = './users/';
+const locationsDir = './locations/';
 
 function ensureUserStatsFile(userId) {
     const userStatsFile = path.join(userStatsDir, `${userId}/stats.json`);
@@ -152,7 +369,22 @@ function ensureUserStatsFile(userId) {
         fs.mkdirSync(path.join(userStatsDir, userId), { recursive: true });
         const initialStats = {
             xp: 0,
-            level: 1
+            level: 1,
+            hp: 100,
+            mp: 100,
+            gold: 0,
+            equipped: {
+                hands: 0,
+                head: 0,
+                torso: 0,
+                legs: 0
+            },
+            inv: {
+                "weapon": {},
+                "armor": {},
+                "consumable": {},
+                "misc": {}
+            }
         };
         fs.writeFileSync(userStatsFile, JSON.stringify(initialStats, null, 4)); // Write the initial stats
     }
@@ -169,6 +401,14 @@ function getUserStats(userId) {
     return JSON.parse(statsData);
 }
 
+function getLocation(locId) {
+    const locationFile = path.join(locationsDir, `${locId}/loc.json`);
+
+    // Read and return user stats
+    const loc = fs.readFileSync(locationFile);
+    return JSON.parse(loc);
+}
+
 function updateUserStats(userId, newStats) {
     const userStatsFile = path.join(userStatsDir, `${userId}/stats.json`);
 
@@ -179,6 +419,30 @@ function updateUserStats(userId, newStats) {
     fs.writeFileSync(userStatsFile, JSON.stringify(newStats, null, 4));
 }
 
+function updateLocation(locId, newLoc) {
+    const locationFile = path.join(locationDir, `${userId}/loc.json`);
+
+    // Write updated stats back to the file
+    fs.writeFileSync(locaitonFile, JSON.stringify(newLoc, null, 4));
+}
+
+// Check if the user should level up
+function checkLevelUp(userStats, message) {
+    const baseXP = 100;
+    const exponent = 1.5;
+    const xpRequiredForNextLevel = Math.floor(baseXP * Math.pow(userStats.level, exponent));
+
+    if (userStats.xp >= xpRequiredForNextLevel) {
+        userStats.level += 1;
+        userStats.hp = 100;
+        userStats.hp = 100;
+        userStats.xp = userStats.xp - xpRequiredForNextLevel; // Subtract the XP required for leveling up
+
+        message.reply(`Congratulations! You leveled up! You are now level ${userStats.level}.\nXP Points: ${userStats.xp}/${xpRequiredForNextLevel}`);
+    } else {
+        message.reply(`Current Lvl:   ${userStats.level}\nXP Points:   ${userStats.xp}/${xpRequiredForNextLevel}`);
+    }
+}
 
 
 
