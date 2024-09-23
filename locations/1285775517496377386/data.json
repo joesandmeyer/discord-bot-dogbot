@@ -1,11 +1,13 @@
 {
-    "doors": {
-        "Cave entrance": {
+    "doors": [
+        {
+            "name": "Iron Door",
             "open": "0",
-            "key-item-type": "misc",
-            "key-item-id": "2",
-            "num-keys": "1"
+            "key_item_type": "weapon",
+            "key_item_id": "1",
+            "num_keys": "5",
+            "role": "dwarfally"
         }
-    },
+    ],
     "storage": []
 }

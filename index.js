@@ -11,6 +11,8 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
+user_action = {};
+
 // Define commands for different channels with parameter handling
 const channelCommands = {
     [channel_id[0]]: { // roles
@@ -23,19 +25,22 @@ const channelCommands = {
     [channel_id[2]]: { // secret glade
         '!status': showStatus,
         '!explore': explore,
-        '!inv': showInventory
+        '!inv': showInventory,
+        '!equip': equipItem
     },
     [channel_id[3]]: { // roleplay channel: start
         '!help': helpRP,
         '!explore': explore,
         '!status': showStatus,
-        '!inv': showInventory
+        '!inv': showInventory,
+        '!equip': equipItem
     },
     [channel_id[4]]: { // roleplay channel: dwarven township
         '!help': helpDwarvenTownship,
         '!explore': explore,
         '!status': showStatus,
         '!inv': showInventory,
+        '!equip': equipItem,
         '!tavern': enterTavern
     }
 };
@@ -93,7 +98,7 @@ async function helpBots(message) {
 //
 
 async function helpRP(message) {
-    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory');
+    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory\n!equip -- equip an item');
 }
 
 
@@ -102,7 +107,7 @@ async function helpRP(message) {
 //
 
 async function helpDwarvenTownship(message) {
-    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory\n!tavern -- rent a room (5 gold)');
+    message.reply('!help -- roleplay help\n!explore -- random encounter\n!status -- show user profile\n!inv -- show inventory\n!equip -- equip an item\n!tavern -- rent a room (5 gold)');
 }
 
 
@@ -113,6 +118,13 @@ async function helpDwarvenTownship(message) {
 async function explore(message) {
     const userId = message.author.id;
     const chanId = message.channel.id;
+    
+    // prevent mutliple user actions at once
+    if (user_action[userId]) {
+        await message.reply(`User is busy performing an action.\n\nExploration cannot be performed.`);
+        return;
+    }
+    user_action[userId] = true;
 
     // Get the current stats of the user
     let userStats = getUserStats(userId);
@@ -138,7 +150,11 @@ async function explore(message) {
         let turn = "player";
         
         while (playerhp >= 1 && monsterhp >= 1) {
-            //battle
+          
+              //
+             // battle
+            //
+            
             await message.reply(`It's the ${turn}'s turn!`);
             
             if (turn === "player") {
@@ -149,9 +165,9 @@ async function explore(message) {
                 const collector = new MessageCollector(message.channel, { filter, time: 60000 }); // 60 seconds timeout
                 
                 await new Promise(resolve => {
-                    collector.on('collect', async (msg) => {
+                    collector.on('collect', async (cmd) => {
                         collector.stop(); // Stop collecting after the first valid input
-                        const command = msg.content.toLowerCase();
+                        const command = cmd.content.toLowerCase();
                         if (command === '!a') {
                             const weapon = items.weapon[userStats.equipped.hands];
                             const high = parseInt(weapon.max_damage);
@@ -170,9 +186,8 @@ async function explore(message) {
                             userStats.mp = playermp;
                             
                             updateUserStats(userId, userStats);
+                            user_action[userId] = false;
                             return;
-                        } else {
-                            await message.reply(`Invalid move...\n\nYour turn has been skipped!`);
                         }
                         turn = "monster"; // Switch turn after player's action
                         resolve();
@@ -285,12 +300,119 @@ async function explore(message) {
             userStats.xp = 0;
         }
         
-    } else { // non-combat encounter
-        await message.reply(`Non-combat encounter!`);
+    } else { 
+    
+          //
+         // non-combat encounter
+        //
+        
+        let msg = "Non-combat encounter!\n\n"
+        
+        // select random encounter
+        
+        // encounter is type locked-door
+        let door = loc.doors[0];
+        const key_name = items[door.key_item_type][door.key_item_id].name;
+        
+        if (door.open === "1") { // door is open
+            msg += `You come across an iron door.\n`;
+            msg += `The door is already open...`;
+            
+            await message.reply(msg);
+            
+            assignRole(message, door.role);
+            user_action[userId] = false;
+            return;
+        }
+        
+        let is_are = "are";
+        if (door.num_keys === "1") is_are = "is";
+        
+        msg += `You come across an iron door.\n`;
+        msg += `There ${is_are} ${door.num_keys} keyholes.\n`;
+        msg += `Each keyhole is ${key_name}-shaped.\n\n`;
+        
+        msg += `!a -- use ${key_name}\n!b -- leave`;
+        await message.reply(msg);
+        
+        // collect player input
+        const filter = m => m.author.id === userId && ['!a', '!b'].includes(m.content.toLowerCase());
+        const collector = new MessageCollector(message.channel, { filter, time: 40000 }); // 40 seconds timeout
+        
+        await new Promise(resolve => {
+            collector.on('collect', async (cmd) => {
+                collector.stop(); // Stop collecting after the first valid input
+                
+                const command = cmd.content.toLowerCase();
+                if (command === '!a') {
+                    // check if player has key item
+                    
+                    let has_key = false;
+                    
+                    if (key_name in userStats.inv[door.key_item_type]) {
+                        const n = parseInt(userStats.inv[door.key_item_type][door.key_item_id]);
+                        if (n >= 1) {
+                            has_key = true;
+                            // remove one of the item from player inventory
+                            userStats.inv[door.key_item_type][door.key_item_id] = toString(n-1);
+                            // remove one of the keyholes
+                            door.num_keys = toString(parseInt(door.num_keys)-1);
+                            await message.reply(`After placing a ${key_name} into the door,\nyou hear a mechanism turning."`);
+                        }
+                    }
+                    
+                    // player did not have key
+                    if (!has_key) {
+                        await message.reply(`You do not have the required item: ${key_name}.`);
+                    }
+                    
+                    // check if door can be opened
+                    if (parseInt(door.num_keys < 1)) {
+                        door.open = "1";
+                        await message.reply(`The door opens!`);
+                        assignRole(message, door.role);
+                    }
+                    
+                    await message.reply(`There are ${door.num_keys} keyholes left.\n\nEncounter has ended.`);
+                    
+                    loc.doors[0] = door;
+                    updateLocation(chanId, loc);
+                    
+                } else if (command === '!b') {
+                    await message.reply(`Encounter has ended.`);
+                }
+                
+                resolve();
+            });
+            collector.on('end', async (collected, reason) => {
+                if (reason === 'time') {
+                    await message.reply(`You took too long to decide!\n\nEncounter has ended.`);
+                    resolve();
+                }
+            });
+        });
+        
+        
+        
+        // ecnounter is type NPC
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     }
     
     // Save updated stats back to the file
     updateUserStats(userId, userStats);
+    user_action[userId] = false;
 }
 
 
@@ -298,7 +420,7 @@ async function explore(message) {
  // Taverns
 //
 
-function enterTavern(message) {
+async function enterTavern(message) {
     const userId = message.author.id;
     //let userStats = getUserStats(userId);
 
@@ -403,10 +525,16 @@ function getUserStats(userId) {
 
 function getLocation(locId) {
     const locationFile = path.join(locationsDir, `${locId}/loc.json`);
+    const locationData = path.join(locationsDir, `${locId}/data.json`);
 
     // Read and return user stats
-    const loc = fs.readFileSync(locationFile);
-    return JSON.parse(loc);
+    let loc = JSON.parse(fs.readFileSync(locationFile));
+    const dat = JSON.parse(fs.readFileSync(locationData));
+    
+    loc.doors = dat.doors;
+    loc.storage = dat.storage;
+    
+    return loc;
 }
 
 function updateUserStats(userId, newStats) {
@@ -420,10 +548,14 @@ function updateUserStats(userId, newStats) {
 }
 
 function updateLocation(locId, newLoc) {
-    const locationFile = path.join(locationDir, `${userId}/loc.json`);
+    const locationData = path.join(locationsDir, `${locId}/data.json`);
+    
+    let newData = {};
+    newData.doors = newLoc.doors;
+    newData.storage = newLoc.storage;
 
     // Write updated stats back to the file
-    fs.writeFileSync(locaitonFile, JSON.stringify(newLoc, null, 4));
+    fs.writeFileSync(locationData, JSON.stringify(newData, null, 4));
 }
 
 // Check if the user should level up

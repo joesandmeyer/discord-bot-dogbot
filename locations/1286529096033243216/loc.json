@@ -1,0 +1,157 @@
+{
+    "name": "Dark Cave",
+    "danger": "90",
+    "monsters": {
+        "0": {
+            "name": "Slime",
+            "hp": "20",
+            "mp": "0",
+            "xp": "5",
+            "gold_min": "20", 
+            "gold_max": "50",
+            "attacks": {
+                "slime darts": {
+                    "min_damage": "1", 
+                    "max_damage": "6", 
+                    "cost": "0"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "1", "chance": "30"}
+                ],
+                "armor": [
+                    {"id": "0", "chance": "1"}
+                ],
+                "consumable": [
+                    {"id": "3", "chance": "20"}
+                ],
+                "misc": [
+                    {"id": "0", "chance": "5"},
+                    {"id": "1", "chance": "5"}
+                ]
+            }
+        },
+        "1": {
+            "name": "Piranha",
+            "hp": "16",
+            "mp": "0",
+            "xp": "5",
+            "gold_min": "40", 
+            "gold_max": "60",
+            "attacks": {
+                "bite": {
+                    "min_damage": "4", 
+                    "max_damage": "5", 
+                    "cost": "0"
+                },
+                "splash": {
+                    "min_damage": "0", 
+                    "max_damage": "0", 
+                    "cost": "0"
+                }
+            },
+            "drops": {
+                "consumable": [
+                    {"id": "6", "chance": "100"}
+                ]
+            }
+        }
+        "2": {
+            "name": "Fire Drake",
+            "hp": "60",
+            "mp": "150",
+            "xp": "100",
+            "gold_min": "200", 
+            "gold_max": "800",
+            "attacks": {
+                "flame_breath": {
+                    "min_damage": "10", 
+                    "max_damage": "20", 
+                    "cost": "30"
+                },
+                "tail_whip": {
+                    "min_damage": "5", 
+                    "max_damage": "8", 
+                    "cost": "15"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "9", "chance": "2"}
+                ],
+                "armor": [
+                    {"id": "4", "chance": "5"}
+                ],
+                "consumable": [
+                    {"id": "5", "chance": "3"}
+                ],
+                "misc": [
+                    {"id": "2", "chance": "4"}
+                ]
+            }
+        },
+        "3": {
+            "name": "Shadow Assassin",
+            "hp": "25",
+            "mp": "50",
+            "xp": "60",
+            "gold_min": "150", 
+            "gold_max": "700",
+            "attacks": {
+                "shadow_strike": {
+                    "min_damage": "8", 
+                    "max_damage": "12", 
+                    "cost": "20"
+                },
+                "poison_dagger": {
+                    "min_damage": "6", 
+                    "max_damage": "10", 
+                    "cost": "15"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "8", "chance": "4"}
+                ],
+                "armor": [
+                    {"id": "5", "chance": "6"}
+                ],
+                "consumable": [
+                    {"id": "6", "chance": "5"}
+                ]
+            }
+        },
+        "4": {
+            "name": "Stone Golem",
+            "hp": "80",
+            "mp": "0",
+            "xp": "120",
+            "gold_min": "100", 
+            "gold_max": "500",
+            "attacks": {
+                "rock_smash": {
+                    "min_damage": "10", 
+                    "max_damage": "15", 
+                    "cost": "0"
+                },
+                "earthquake": {
+                    "min_damage": "15", 
+                    "max_damage": "25", 
+                    "cost": "40"
+                }
+            },
+            "drops": {
+                "weapon": [
+                    {"id": "10", "chance": "3"}
+                ],
+                "armor": [
+                    {"id": "6", "chance": "7"}
+                ],
+                "misc": [
+                    {"id": "3", "chance": "6"}
+                ]
+            }
+        }
+    }
+}

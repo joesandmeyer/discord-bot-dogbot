@@ -12,7 +12,7 @@
             "attacks": {
                 "slime darts": {
                     "min_damage": "1", 
-                    "max_damage": "2", 
+                    "max_damage": "6", 
                     "cost": "0"
                 }
             },
@@ -41,8 +41,8 @@
             "gold_max": "60",
             "attacks": {
                 "bite": {
-                    "min_damage": "2", 
-                    "max_damage": "3", 
+                    "min_damage": "4", 
+                    "max_damage": "5", 
                     "cost": "0"
                 },
                 "splash": {

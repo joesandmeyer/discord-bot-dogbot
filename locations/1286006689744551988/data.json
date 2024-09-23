@@ -1,11 +1,13 @@
 {
-    "doors": {
-        "Cave entrance": {
+    "doors": [
+        {
+            "name": "Obsidian Door",
             "open": "0",
-            "key-item-type": "misc",
-            "key-item-id": "2",
-            "num-keys": "1"
+            "key_item_type": "misc",
+            "key_item_id": "2",
+            "num_keys": "1",
+            "role": "cavedweller"
         }
-    },
+    ],
     "storage": []
 }
